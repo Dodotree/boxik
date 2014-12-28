@@ -1,8 +1,20 @@
 <html>
 <head>
 <script src="ui/jquery.js"></script>
+<style type="text/css">
+</style>
 </head>
 <body>
 	<img src="pics/bridgeIcon.jpg">
+  <script>
+    $.ajax({
+        url: "cgi-bin/test.pl",
+        method: 'GET',
+        dataType: 'json',
+        success: onDataReceived
+    });
+    function onDataReceived(){
+    }
+  </script>
 </body>
 </html>
