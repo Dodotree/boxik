@@ -4,7 +4,17 @@
 <script src="ui/flot/jquery.flot.js"></script>
 <script src="ui/flot/jquery.flot.time.min.js"></script>
 <style type="text/css">
+    .plotTitle{
+	position: absolute;
+	font-family: "lucida grande",tahoma,verdana,arial,sans-serif;
+	letter-spacing: 1px;
+	color:rgb(84, 84, 84);
+        text-shadow:0 1px 0 rgba(0,0,0, 0.1); 
+    }
     .card{
+	border-radius: 10px;
+	background-color: rgba( 255, 255, 255, 0.5 );
+	position: absolute;
 	width: 500px;
 	height: 350px;
     }
@@ -22,17 +32,38 @@
 
 <script>
 
+var sizes = []; sizes.length = 0;
+var twoRows = false;
+var tiles = []; tiles.length = 0;
 var colors =[ "#F7D842", "#F76D3C", "#F15F74", "#913CCD", 
 	"#5481E6", "#839098", "#98CB4A", "#2CA8C2"];
+var lastColorId = 0;
 var standardLables = {
 	    temperature: ["Virtual Device", "Core 0", "Core 1"],
 	    processes: ["ps ax|wc -l"],
-	    load: [ "over 1min", "over 5min", "over 15min"]
+	    load: [ "over 1min", "over 5min", "over 15min"],
+	    memory: [ "usage %", "swap %"]	
 	};
+
+    //initiate Sizes ans Tiles
+    initSizes();
+    defineTiles();
+
     //initiate Flot 
+    var tl = 0; // tile counter
+    var tileW = tiles.shift();
+    var tileH = tiles.shift();
     for( var p_id in standardLables ){
-	var plotJQ =$( "<div></div>" ).appendTo( "#graphing" );;
+	var plotJQ = $( "<div></div>" ).appendTo( "#graphing" );
 	plotJQ[0].id = p_id;
+	var tileL = tiles[tl++], tileT = tiles[tl++];
+	plotJQ.css({ "width":tileW, "height":tileH,
+			"left": tileL, "top":tileT });
+
+	var titleJQ = $( "<div>"+p_id+"</div>" ).appendTo( "#graphing" );
+	titleJQ.addClass( "plotTitle" );
+	titleJQ.css({ "left":tileL+sizes[6], "top":tileT+8 }); 
+
 	plotJQ[0].options = {
             selection: { mode: "x", color:"#E52B50" },
             crosshair: { mode: "x" }, 
@@ -59,7 +90,8 @@ var standardLables = {
 	var JQ = $( "#" + plotId );
 	var series = textToSeries( datalog );
 	for( var i=0; i < series.length; i++ ){
-	   series[i] =  { color: colors[i], label: standardLables[ plotId ][i],  
+	   series[i] =  { color: colors[ lastColorId++ ], 
+		label: standardLables[ plotId ][i],  
                 data: series[i], lines: { show: true }};
 	}
 	$.plot( JQ, series, JQ[0].options );
@@ -90,6 +122,78 @@ var standardLables = {
 	}
     return series ;
     }
+
+    function changeFontSizes(){
+    }
+
+    function defineTiles(){
+	// each big tile has its W, H, X, Y
+	// margins taken care of
+	var W = $(window).width();
+	if( twoRows ){
+	   var margT = sizes[7];
+	   var margS = sizes[8];
+	   var between = sizes[6];
+	   var tileW = W/2 - margS - between;
+	   var tileH = tileW/1.618;
+	   tiles.push( tileW );
+	   tiles.push( tileH );
+	   for( var i=0; i<4; i++ ){
+	     var ix = i%2;
+	     var iy = (i-ix)/2
+	     var L = margS + (tileW+between)*ix;
+	     var T = margT + (tileH+between)*iy;
+	   	tiles.push( L );
+	   	tiles.push( T );
+	   }
+	}else{
+	   var margT = sizes[7];
+           var margS = sizes[9];
+	   var between = margT;;
+	   var tileW = W - 2*margS;
+	   var tileH = tileW/1.618;
+	   tiles.push( tileW );
+	   tiles.push( tileH );
+	   for( var i=0; i<4; i++ ){
+	       var T = margT + (tileH+between)*i;
+	       tiles.push( margS );
+               tiles.push( T );
+	   }
+	}
+    }
+
+    function initSizes(){
+	var W = $(window).width(), 
+	    H = $(window).height();
+	twoRows = ( W > 1000 );
+	//var metr = Math.min( W, H*1.618 );
+	var metr = Math.max( W, 760 ); 
+	sizes = [ metr ];
+	while( metr > 1 ){ 
+	    metr /= 1.618;
+	    sizes.push( metr ); 
+	} 
+	sizes.reverse();
+	console.log( W );
+    }
+
+function debounce(delay, callback) {
+    var timeout = null;
+    return function () {
+        if (timeout) {clearTimeout(timeout);}
+        var args = arguments;
+        timeout = setTimeout(function () {
+            callback.apply(null, args);
+            timeout = null;
+        }, delay);
+    };
+}
+
+$(window).resize( debounce(250,  function (event) {
+    initSizes();
+    defineTiles();
+}, false));
+
   </script>
 </body>
 </html>
