@@ -1,19 +1,94 @@
 <html>
 <head>
 <script src="ui/jquery.js"></script>
+<script src="ui/flot/jquery.flot.js"></script>
+<script src="ui/flot/jquery.flot.time.min.js"></script>
 <style type="text/css">
+    .card{
+	width: 500px;
+	height: 350px;
+    }
+    body{
+	background-color: #f1f1f1;
+	background-image: url("pics/bridge.jpg");
+	background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center; 
+    }
 </style>
 </head>
 <body>
-	<img src="pics/bridgeIcon.jpg">
-  <script>
-    $.ajax({
-        url: "cgi-bin/test.pl",
-        method: 'GET',
-        dataType: 'json',
-        success: onDataReceived
-    });
-    function onDataReceived(){
+    <div id="graphing"></div>
+
+<script>
+
+var colors =[ "#F7D842", "#F76D3C", "#F15F74", "#913CCD", 
+	"#5481E6", "#839098", "#98CB4A", "#2CA8C2"];
+var standardLables = {
+	    temperature: ["Virtual Device", "Core 0", "Core 1"],
+	    processes: ["ps ax|wc -l"],
+	    load: [ "over 1min", "over 5min", "over 15min"]
+	};
+    //initiate Flot 
+    for( var p_id in standardLables ){
+	var plotJQ =$( "<div></div>" ).appendTo( "#graphing" );;
+	plotJQ[0].id = p_id;
+	plotJQ[0].options = {
+            selection: { mode: "x", color:"#E52B50" },
+            crosshair: { mode: "x" }, 
+            grid:  {tickColor: "#c9d6de", borderWidth:0, 
+		hoverable: true, autoHighlight: false }, 
+            xaxis: { mode: "time", tickLength: 10 }, 
+            yaxes: [{show:true, position:"right"}]
+	};
+	plotJQ.addClass( "card" );
+	getLog( p_id, plotSeries );
+    }
+
+    function getLog( flotName, callbk ){
+    	$.ajax({
+	    whichFlot: flotName,
+            url: "logs/"+flotName,
+            method: 'GET',
+            dataType: 'text',
+            success: callbk
+    	});
+    }
+    function plotSeries( datalog ){
+	var plotId = this.whichFlot;
+	var JQ = $( "#" + plotId );
+	var series = textToSeries( datalog );
+	for( var i=0; i < series.length; i++ ){
+	   series[i] =  { color: colors[i], label: standardLables[ plotId ][i],  
+                data: series[i], lines: { show: true }};
+	}
+	$.plot( JQ, series, JQ[0].options );
+    }
+    function textToSeries( datalog ){
+	// takes log file in format "time x0 x1 ... xN \n"
+	// and converts into series N series for Flot
+	// [[time0, x00], [time1, x01]...]
+	// it assumes that data is sorted by time
+	// otherwise add sortine
+	var loglines = datalog.split( "\n" );
+	loglines.pop();
+	var series = []; series.length = 0;
+	for( var i=0; i < loglines.length; i++ ){
+	    var arr = loglines[i].split(/\s+/);
+	    var linetime = Number(arr.shift())*1000;
+	    for( var ii=0; ii < arr.length; ii++ ){
+		arr[ii] = parseFloat( arr[ii] );
+		if ( !isNaN(arr[ii]) ){ 
+		    if( !$.isArray(series[ii])){
+		       series[ii] = [ [linetime,arr[ii]] ];
+		    }else{
+		       series[ii].push( [linetime, arr[ii]] );
+		    }
+		}else{ arr.length = ii; }
+			//because of whitespaces at the end
+	    }
+	}
+    return series ;
     }
   </script>
 </body>
