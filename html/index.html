@@ -1,8 +1,12 @@
 <html>
 <head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Welcome to Boxik</title>
 <script src="ui/jquery.js"></script>
 <script src="ui/flot/jquery.flot.js"></script>
 <script src="ui/flot/jquery.flot.time.min.js"></script>
+<script src="ui/flot/jquery.flot.crosshair.js"></script>
+<script src="ui/flot/jquery.flot.selection.js"></script>
 <style type="text/css">
     .plotTitle{
 	position: absolute;
@@ -13,7 +17,7 @@
     }
     .card{
 	border-radius: 10px;
-	background-color: rgba( 255, 255, 255, 0.5 );
+	background-color: rgba( 255, 255, 255, 0.7 ); /* 0.5 with image*/
 	position: absolute;
 	width: 500px;
 	height: 350px;
@@ -39,10 +43,10 @@ var colors =[ "#F7D842", "#F76D3C", "#F15F74", "#913CCD",
 	"#5481E6", "#839098", "#98CB4A", "#2CA8C2"];
 var lastColorId = 0;
 var standardLables = {
-	    temperature: ["Virtual Device", "Core 0", "Core 1"],
-	    processes: ["ps ax|wc -l"],
-	    load: [ "over 1min", "over 5min", "over 15min"],
-	    memory: [ "usage %", "swap %"]	
+	    Temperature: ["Virtual Device", "Core 0", "Core 1"],
+	    Processes: ["ps ax|wc -l"],
+	    Load: [ "over 1min", "over 5min", "over 15min"],
+	    Memory: [ "usage %", "swap %"]	
 	};
 
     //initiate Sizes ans Tiles
@@ -73,13 +77,42 @@ var standardLables = {
             yaxes: [{show:true, position:"right"}]
 	};
 	plotJQ.addClass( "card" );
+	plotJQ.bind("plotselected", zoomIn);
 	getLog( p_id, plotSeries );
+    }
+
+    function zoomIn( event, ranges ) {
+	var thisplot = this;
+	var series = thisplot.flot.getData();
+	var options = thisplot.flot.getOptions();
+
+        // clamp the zooming to prevent eternal zoom
+        if (ranges.xaxis.to - ranges.xaxis.from < 0.00001) {
+		ranges.xaxis.to = ranges.xaxis.from + 0.00001;}
+            
+        // do the zooming
+	for( var i=0; i<series.length; i++ ){
+	    series[i].data = zoomInData( series[i].data, 
+			ranges.xaxis.from,  ranges.xaxis.to );      
+	}
+        options=$.extend( true, {}, options, 
+		{ xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }});
+        $.plot( $(thisplot), series, options);
+    }
+
+    function zoomInData(sourceData, x1, x2) { 
+        var d = [];
+        for (var i = 0; i <= sourceData.length-1; ++i) { 
+            var x=sourceData[i][0];
+            if(x1<=x && x<=x2) { d.push(sourceData[i]); }
+        }
+        return d;
     }
 
     function getLog( flotName, callbk ){
     	$.ajax({
 	    whichFlot: flotName,
-            url: "logs/"+flotName,
+            url: "logs/"+flotName.toLowerCase(),
             method: 'GET',
             dataType: 'text',
             success: callbk
@@ -94,7 +127,9 @@ var standardLables = {
 		label: standardLables[ plotId ][i],  
                 data: series[i], lines: { show: true }};
 	}
-	$.plot( JQ, series, JQ[0].options );
+	var flotObj = $.plot( JQ, series, JQ[0].options );
+	JQ[0].flot = flotObj; // since I can't find how to call it
+	//in the future, I maintain this reference
     }
     function textToSeries( datalog ){
 	// takes log file in format "time x0 x1 ... xN \n"
