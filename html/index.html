@@ -24,7 +24,7 @@
     }
     body{
 	background-color: #f1f1f1;
-	background-image: url("pics/bridge.jpg");
+	/*background-image: url("pics/bridge.jpg");*/
 	background-repeat: no-repeat;
         background-attachment: fixed;
         background-position: center; 
@@ -45,8 +45,8 @@ var lastColorId = 0;
 var standardLables = {
 	    Temperature: ["Virtual Device", "Core 0", "Core 1"],
 	    Processes: ["ps ax|wc -l"],
-	    Load: [ "over 1min", "over 5min", "over 15min"],
-	    Memory: [ "usage %", "swap %"]	
+	    Load: [ "1min", "5min", "15min"],
+	    Memory: [ "used %", "swap %"]	
 	};
 
     //initiate Sizes ans Tiles
@@ -114,8 +114,8 @@ var standardLables = {
 	    whichFlot: flotName,
             url: "logs/"+flotName.toLowerCase(),
             method: 'GET',
-            dataType: 'text',
-            success: callbk
+            dataType: 'text', //because log file doesn't have .txt 
+            success: callbk   //it gives stupid "syntax error" in firebug 
     	});
     }
     function plotSeries( datalog ){
