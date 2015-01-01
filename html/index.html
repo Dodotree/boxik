@@ -46,8 +46,12 @@ var standardLables = {
 	    Temperature: ["Virtual Device", "Core 0", "Core 1"],
 	    Processes: ["ps ax|wc -l"],
 	    Load: [ "1min", "5min", "15min"],
-	    Memory: [ "used %", "swap %"]	
+	    Memory: [ "used %", "swap %"],
+	    Packets: [ "br0", "nflog", "nfqueue", 
+			"p1p1", "p2p1", "p4p1", 
+			"p4p2", "p4p3", "any"]	
 	};
+    var numOfTiles = 5;
 
     //initiate Sizes ans Tiles
     initSizes();
@@ -78,7 +82,37 @@ var standardLables = {
 	};
 	plotJQ.addClass( "card" );
 	plotJQ.bind("plotselected", zoomIn);
+	plotJQ.bind("plothover", debounce( 10, doCrosshair, false ) );
 	getLog( p_id, plotSeries );
+    }
+
+    function doCrosshair(event, pos, item) {
+	for( var p_id in standardLables ){
+	    var flotO = $( "#"+p_id )[0].flot;
+	    flotO.setCrosshair(pos);
+	    updateLegend( p_id, flotO, pos );
+	}
+    }
+
+    function updateLegend( id, flotO, pos ) {
+        var legends = $("#"+id+" .legendLabel"); 
+            
+        var axes = flotO.getAxes();
+        if (pos.x < axes.xaxis.min || pos.x > axes.xaxis.max) return;
+
+        var dataset = flotO.getData();
+            for ( var i = 0; i < dataset.length; ++i) {
+                var series = dataset[i];
+
+                // find the nearest points, x-wise
+                for (var j = 0; j < series.data.length; ++j)
+                    if (series.data[j][0] > pos.x)
+                        break;
+                var p1 = series.data[j - 1], p2 = series.data[j];
+		var y = (p1 == null)? p2[1] : p1[1];
+
+                legends.eq(i).text( series.label.replace(/=.*/, "= " + y ) );
+            }
     }
 
     function zoomIn( event, ranges ) {
@@ -124,12 +158,19 @@ var standardLables = {
 	var series = textToSeries( datalog );
 	for( var i=0; i < series.length; i++ ){
 	   series[i] =  { color: colors[ lastColorId++ ], 
-		label: standardLables[ plotId ][i],  
+		label: standardLables[ plotId ][i]+" = 100000",  
                 data: series[i], lines: { show: true }};
 	}
 	var flotObj = $.plot( JQ, series, JQ[0].options );
 	JQ[0].flot = flotObj; // since I can't find how to call it
 	//in the future, I maintain this reference
+	fixLegendWidth( plotId );
+    }
+    function fixLegendWidth( id ){
+       var legends = $("#"+id+" .legendLabel"); 
+       legends.each( function (){ // fix the widths so they don't jump around
+                $(this).css('width', $(this).width());
+       });
     }
     function textToSeries( datalog ){
 	// takes log file in format "time x0 x1 ... xN \n"
@@ -173,7 +214,7 @@ var standardLables = {
 	   var tileH = tileW/1.618;
 	   tiles.push( tileW );
 	   tiles.push( tileH );
-	   for( var i=0; i<4; i++ ){
+	   for( var i=0; i< numOfTiles; i++ ){
 	     var ix = i%2;
 	     var iy = (i-ix)/2
 	     var L = margS + (tileW+between)*ix;
@@ -189,7 +230,7 @@ var standardLables = {
 	   var tileH = tileW/1.618;
 	   tiles.push( tileW );
 	   tiles.push( tileH );
-	   for( var i=0; i<4; i++ ){
+	   for( var i=0; i<numOfTiles; i++ ){
 	       var T = margT + (tileH+between)*i;
 	       tiles.push( margS );
                tiles.push( T );
