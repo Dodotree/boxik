@@ -47,11 +47,10 @@ var standardLables = {
 	    Processes: ["ps ax|wc -l"],
 	    Load: [ "1min", "5min", "15min"],
 	    Memory: [ "used %", "swap %"],
-	    Packets: [ "br0", "nflog", "nfqueue", 
-			"p1p1", "p2p1", "p4p1", 
-			"p4p2", "p4p3", "any"]	
+        Ports: [ "p1p1", "p2p1", "p4p1", "p4p2", "p4p3" ],
+	    Packets: [ "any", "br0", "nflog", "nfqueue"] 	
 	};
-    var numOfTiles = 5;
+    var numOfTiles = 6;
 
     //initiate Sizes ans Tiles
     initSizes();
@@ -87,11 +86,11 @@ var standardLables = {
     }
 
     function doCrosshair(event, pos, item) {
-	for( var p_id in standardLables ){
-	    var flotO = $( "#"+p_id )[0].flot;
-	    flotO.setCrosshair(pos);
-	    updateLegend( p_id, flotO, pos );
-	}
+	    for( var p_id in standardLables ){
+	        var flotO = $( "#"+p_id )[0].flot;
+	        flotO.setCrosshair(pos);
+	        updateLegend( p_id, flotO, pos );
+	    }
     }
 
     function updateLegend( id, flotO, pos ) {
@@ -103,35 +102,41 @@ var standardLables = {
         var dataset = flotO.getData();
             for ( var i = 0; i < dataset.length; ++i) {
                 var series = dataset[i];
-
                 // find the nearest points, x-wise
                 for (var j = 0; j < series.data.length; ++j)
                     if (series.data[j][0] > pos.x)
                         break;
                 var p1 = series.data[j - 1], p2 = series.data[j];
-		var y = (p1 == null)? p2[1] : p1[1];
-
+		        var y = (p1 == null)? p2[1] : p1[1];
                 legends.eq(i).text( series.label.replace(/=.*/, "= " + y ) );
             }
     }
 
     function zoomIn( event, ranges ) {
-	var thisplot = this;
-	var series = thisplot.flot.getData();
-	var options = thisplot.flot.getOptions();
+	//var thisplot = this;
+	    for( var p_id in standardLables ){
+            doZoomIn( $( "#"+p_id )[0] , ranges ); 
+            // I use html Obj as a middle ground btw jq and flot
+        }
+    }
+
+    function doZoomIn( thisplot, ranges ){
+    	var series = thisplot.flot.getData();
+    	var options = thisplot.flot.getOptions();
 
         // clamp the zooming to prevent eternal zoom
         if (ranges.xaxis.to - ranges.xaxis.from < 0.00001) {
 		ranges.xaxis.to = ranges.xaxis.from + 0.00001;}
             
         // do the zooming
-	for( var i=0; i<series.length; i++ ){
-	    series[i].data = zoomInData( series[i].data, 
-			ranges.xaxis.from,  ranges.xaxis.to );      
-	}
+    	for( var i=0; i<series.length; i++ ){
+	        series[i].data = zoomInData( series[i].data, 
+		    	ranges.xaxis.from,  ranges.xaxis.to );      
+	    }
         options=$.extend( true, {}, options, 
-		{ xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }});
-        $.plot( $(thisplot), series, options);
+		    { xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }});
+        flotObj = $.plot( $(thisplot), series, options);
+        thisplot.flot = flotObj;
     }
 
     function zoomInData(sourceData, x1, x2) { 
@@ -185,16 +190,16 @@ var standardLables = {
 	    var arr = loglines[i].split(/\s+/);
 	    var linetime = Number(arr.shift())*1000;
 	    for( var ii=0; ii < arr.length; ii++ ){
-		arr[ii] = parseFloat( arr[ii] );
-		if ( !isNaN(arr[ii]) ){ 
-		    if( !$.isArray(series[ii])){
-		       series[ii] = [ [linetime,arr[ii]] ];
-		    }else{
-		       series[ii].push( [linetime, arr[ii]] );
-		    }
-		}else{ arr.length = ii; }
-			//because of whitespaces at the end
-	    }
+		    arr[ii] = parseFloat( arr[ii] );
+		    if ( !isNaN(arr[ii]) ){ 
+		        if( !$.isArray(series[ii])){
+		            series[ii] = [ [linetime,arr[ii]] ];
+		        }else{
+		            series[ii].push( [linetime, arr[ii]] );
+		        }
+		    }else{ arr.length = ii; }
+			    //because of whitespaces at the end
+	        }
 	}
     return series ;
     }
@@ -207,16 +212,17 @@ var standardLables = {
 	// margins taken care of
 	var W = $(window).width();
 	if( twoRows ){
+       var N = 3;
 	   var margT = sizes[7];
 	   var margS = sizes[8];
 	   var between = sizes[6];
-	   var tileW = W/2 - margS - between;
+	   var tileW = (W - 2*margS - (N-1)*between)/N;
 	   var tileH = tileW/1.618;
 	   tiles.push( tileW );
 	   tiles.push( tileH );
 	   for( var i=0; i< numOfTiles; i++ ){
-	     var ix = i%2;
-	     var iy = (i-ix)/2
+	     var ix = i%N;
+	     var iy = (i-ix)/N;
 	     var L = margS + (tileW+between)*ix;
 	     var T = margT + (tileH+between)*iy;
 	   	tiles.push( L );

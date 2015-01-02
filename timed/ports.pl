@@ -4,7 +4,7 @@ use Data::Dumper;
             
 my%data;
 my $absPath = '/home/olgat/boxik/packets/';
-my @devices = ( 'any', 'br0', 'nflog', 'nfqueue' );
+my @devices = ( 'p1p1', 'p2p1', 'p4p1', 'p4p2', 'p4p3');
 
 my $currentTime = time();
 
@@ -18,4 +18,6 @@ for my $dvc ( @devices ){
     }
 }
 
-print time()." $data{ any } $data{ br0 } $data{ nflog } $data{ nfqueue }\n";
+print time()." $data{ p1p1 } $data{ p2p1 } $data{ p4p1 }"
+		." $data{ p4p2 } $data{ p4p3 }\n";
+
