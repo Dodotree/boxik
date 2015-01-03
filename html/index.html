@@ -78,6 +78,7 @@ var standardLables = {
 		hoverable: true, autoHighlight: false }, 
             xaxis: { mode: "time", tickLength: 10 }, 
             yaxes: [{show:true, position:"right"}]
+            // subsequent yaxes and min/max  set when series recieved
 	};
 	plotJQ.addClass( "card" );
 	plotJQ.bind("plotselected", zoomIn);
@@ -99,6 +100,7 @@ var standardLables = {
         var axes = flotO.getAxes();
         if (pos.x < axes.xaxis.min || pos.x > axes.xaxis.max) return;
 
+        flotO.unhighlight();
         var dataset = flotO.getData();
             for ( var i = 0; i < dataset.length; ++i) {
                 var series = dataset[i];
@@ -107,7 +109,13 @@ var standardLables = {
                     if (series.data[j][0] > pos.x)
                         break;
                 var p1 = series.data[j - 1], p2 = series.data[j];
-		        var y = (p1 == null)? p2[1] : p1[1];
+                if( p1 == null || pos.x - p1[0] > p2[0] - pos.x ){
+                    var y = p2[1];
+                    flotO.highlight( i, j );
+                }else{
+                    var y = p1[1];
+                    flotO.highlight( i, j-1 );
+                }
                 legends.eq(i).text( series.label.replace(/=.*/, "= " + y ) );
             }
     }
@@ -158,18 +166,19 @@ var standardLables = {
     	});
     }
     function plotSeries( datalog ){
-	var plotId = this.whichFlot;
-	var JQ = $( "#" + plotId );
-	var series = textToSeries( datalog );
-	for( var i=0; i < series.length; i++ ){
-	   series[i] =  { color: colors[ lastColorId++ ], 
-		label: standardLables[ plotId ][i]+" = 100000",  
+	    var plotId = this.whichFlot;
+	    var JQ = $( "#" + plotId );
+	    var series = textToSeries( datalog, JQ[0].options ); 
+            // series will set yaxis min/max in options
+	    for( var i=0; i < series.length; i++ ){
+	        series[i] =  { color: colors[ lastColorId++ ], 
+		        label: standardLables[ plotId ][i]+" = 100000",  
                 data: series[i], lines: { show: true }};
-	}
-	var flotObj = $.plot( JQ, series, JQ[0].options );
-	JQ[0].flot = flotObj; // since I can't find how to call it
-	//in the future, I maintain this reference
-	fixLegendWidth( plotId );
+	    }
+	    var flotObj = $.plot( JQ, series, JQ[0].options );
+	    JQ[0].flot = flotObj; // since I can't find how to call it
+	    //in the future, I maintain this reference
+	    fixLegendWidth( plotId );
     }
     function fixLegendWidth( id ){
        var legends = $("#"+id+" .legendLabel"); 
@@ -177,7 +186,7 @@ var standardLables = {
                 $(this).css('width', $(this).width());
        });
     }
-    function textToSeries( datalog ){
+    function textToSeries( datalog, options ){
 	// takes log file in format "time x0 x1 ... xN \n"
 	// and converts into series N series for Flot
 	// [[time0, x00], [time1, x01]...]
@@ -186,6 +195,8 @@ var standardLables = {
 	var loglines = datalog.split( "\n" );
 	loglines.pop();
 	var series = []; series.length = 0;
+    var min = Number.POSITIVE_INFINITY,
+        max = -1;
 	for( var i=0; i < loglines.length; i++ ){
 	    var arr = loglines[i].split(/\s+/);
 	    var linetime = Number(arr.shift())*1000;
@@ -197,10 +208,20 @@ var standardLables = {
 		        }else{
 		            series[ii].push( [linetime, arr[ii]] );
 		        }
+                min = Math.min( min, arr[ii] );
+                max = Math.max( max, arr[ii] );
 		    }else{ arr.length = ii; }
 			    //because of whitespaces at the end
 	        }
 	}
+    max += 0.15*(max-min); // for top margin
+	for( var i=0; i < series.length; i++ ){
+        if( !options.yaxes[i] ){ 
+//            options.yaxes.push( {} );
+        }
+//        options.yaxes[i].min = min;
+//        options.yaxes[i].max = max;
+    }
     return series ;
     }
 
