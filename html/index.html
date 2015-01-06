@@ -136,7 +136,6 @@ var standardLables = {
 	    for( var p_id in standardLables ){
             doZoomIn( $( "#"+p_id )[0] , ranges ); 
             // I use html Obj as a middle ground btw jq and flot
-            fixLegendWidth( p_id );
         }
     }
 
@@ -157,6 +156,8 @@ var standardLables = {
 		    { xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }});
         flotObj = $.plot( $(thisplot), series, options);
         thisplot.flot = flotObj;
+        fixLegendWidth( thisplot.id );
+        makeLegendButtons( thisplot.id, thisplot, series.length );
     }
 
     function zoomInData(sourceData, x1, x2) { 
