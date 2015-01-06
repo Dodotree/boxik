@@ -39,18 +39,29 @@
 var sizes = []; sizes.length = 0;
 var twoRows = false;
 var tiles = []; tiles.length = 0;
-var colors =[ "#F7D842", "#F76D3C", "#F15F74", "#913CCD", 
-	"#5481E6", "#839098", "#98CB4A", "#2CA8C2"];
-var lastColorId = 0;
+var numOfTiles = 6;
+var colors =[ "#F7D842", "#27221f", "#791d64", "#5481E6","#2CA8C2", 
+	"#913CCD", "#98CB4A", "#839098","#e31a1c", "#1f78b4", "#00ba38", 
+    "#9c8cff", "#f38ab3", "#b90f58"];
 var standardLables = {
+        Ports: [ "empty", "out", "iTV", "PC", "iMac" ],
+	    //Packets: [ "any"], 	
+	    Packets: [ "any" ], 	
+	    Load: [ "1min", "5min", "15min"],
 	    Temperature: ["Virtual Device", "Core 0", "Core 1"],
 	    Processes: ["ps ax|wc -l"],
-	    Load: [ "1min", "5min", "15min"],
-	    Memory: [ "used %", "swap %"],
-        Ports: [ "p1p1", "p2p1", "p4p1", "p4p2", "p4p3" ],
-	    Packets: [ "any", "br0", "nflog", "nfqueue"] 	
+	    Memory: [ "used %", "swap %", "disk %"]
+        //Ports: [ "p1p1", "p2p1", "p4p1", "p4p2", "p4p3" ],
 	};
-    var numOfTiles = 6;
+    var sColors = {}, cc = 0;
+    for( var id in standardLables ){
+        sColors[ id ] = []; 
+	    for( var lab=0; lab < standardLables[ id].length; lab++ ){
+	       sColors[ id ][ lab ] = colors[ cc++ ];
+           cc = cc % colors.length;
+        }
+    } 
+
 
     //initiate Sizes ans Tiles
     initSizes();
@@ -125,6 +136,7 @@ var standardLables = {
 	    for( var p_id in standardLables ){
             doZoomIn( $( "#"+p_id )[0] , ranges ); 
             // I use html Obj as a middle ground btw jq and flot
+            fixLegendWidth( p_id );
         }
     }
 
@@ -171,7 +183,7 @@ var standardLables = {
 	    var series = textToSeries( datalog, JQ[0].options ); 
             // series will set yaxis min/max in options
 	    for( var i=0; i < series.length; i++ ){
-	        series[i] =  { color: colors[ lastColorId++ ], 
+	        series[i] =  { color: sColors[ plotId ][ i ], 
 		        label: standardLables[ plotId ][i]+" = 100000",  
                 data: series[i], lines: { show: true }};
 	    }
@@ -179,6 +191,26 @@ var standardLables = {
 	    JQ[0].flot = flotObj; // since I can't find how to call it
 	    //in the future, I maintain this reference
 	    fixLegendWidth( plotId );
+        makeLegendButtons( plotId, JQ[0], series.length );
+    }
+    function toggleSeries(){
+        var i = this.ind;
+        var pa = this.pa;
+        var series = pa.flot.getData();
+        var options = pa.flot.getOptions();
+         // don't use pa.options, because of zoom
+        series[i].lines.show = !series[i].lines.show;
+        $.plot( $(pa), series, options );
+	    fixLegendWidth( pa.id );
+        makeLegendButtons( pa.id, pa, series.length );
+    }
+    function makeLegendButtons( id, pa, len ){ //for toggle
+        var boxes = $("#"+id+" .legendColorBox");
+        for( var i=0; i < len; i++ ){
+            $(boxes[i]).click( toggleSeries );
+            boxes[i].ind = i;
+            boxes[i].pa = pa;
+        }
     }
     function fixLegendWidth( id ){
        var legends = $("#"+id+" .legendLabel"); 
