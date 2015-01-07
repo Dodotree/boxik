@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 use strict;
 use warnings;
 use Data::Dumper;
@@ -13,11 +14,10 @@ my $swap_percent =
     $swap_percent = int( $swap_percent );
 
 
-my $d = `df /`;
-my @arr = split /\s+/, $d;
+my $disk = `df /`;
+my @arr = split /\s+/, $disk;
 #print Dumper( @arr );
 $arr[11] =~ s/[%]//;
-
 
 
 print time()." $usage_percent $swap_percent $arr[11]\n";
