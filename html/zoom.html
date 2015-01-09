@@ -7,6 +7,7 @@
 <script src="ui/flot/jquery.flot.time.min.js"></script>
 <script src="ui/flot/jquery.flot.crosshair.js"></script>
 <script src="ui/flot/jquery.flot.selection.js"></script>
+<script src="ui/flot/jquery.flot.fillbetween.js"></script>
 <style type="text/css">
     .plotTitle{
 	position: absolute;
@@ -86,15 +87,15 @@ var standardLables = {
             selection: { mode: "x", color:"#E52B50" },
             crosshair: { mode: "x" }, 
             grid:  {tickColor: "#c9d6de", borderWidth:0, 
-		    hoverable: true, autoHighlight: false }, 
-            xaxis: { mode: "time", timezone: "browser", tickLength: 10 }, 
+		hoverable: true, autoHighlight: false }, 
+            xaxis: { mode: "time", tickLength: 10 }, 
             yaxes: [{show:true, position:"right"}]
             // subsequent yaxes and min/max  set when series recieved
 	};
 	plotJQ.addClass( "card" );
 	plotJQ.bind("plotselected", zoomIn);
 	plotJQ.bind("plothover", debounce( 10, doCrosshair, false ) );
-	getLog( p_id, plotSeries, 0, 0 );
+	getLog( p_id, plotSeries );
     }
 
     function doCrosshair(event, pos, item) {
@@ -127,7 +128,9 @@ var standardLables = {
                     var y = p1[1];
                     flotO.highlight( i, j-1 );
                 }
-                legends.eq(i).text( series.label.replace(/=.*/, "= " + y ) );
+                if( series.label ){
+                  legends.eq(i).text( series.label.replace(/=.*/, "= " + y ) );
+                }
             }
     }
 
@@ -136,10 +139,6 @@ var standardLables = {
 	    for( var p_id in standardLables ){
             doZoomIn( $( "#"+p_id )[0] , ranges ); 
             // I use html Obj as a middle ground btw jq and flot
-            getLog( p_id, plotSeries, 
-                Math.round( ranges.xaxis.from/1000 ), 
-                Math.round( ranges.xaxis.to/1000 ) 
-            );
         }
     }
 
@@ -173,14 +172,11 @@ var standardLables = {
         return d;
     }
 
-    function getLog( flotName, callbk, from, upto ){
-        var timme = new Date();
-        console.log( Math.round( timme.getTime()/1000 ) );
-        console.log( timme.getHours() );
+    function getLog( flotName, callbk ){
     	$.ajax({
 	    whichFlot: flotName,
-            url: "cgi-bin/readMax.pl?file="+flotName.toLowerCase()
-                    +"&from="+from+"&upto="+upto+"&width="+tileW,
+            url: "cgi-bin/readZoom.pl?file="+flotName.toLowerCase()
+                    +"&min="+0+"&max="+0,
             method: 'GET',
             dataType: 'text', //because log file doesn't have .txt 
             success: callbk   //it gives stupid "syntax error" in firebug 
@@ -191,10 +187,18 @@ var standardLables = {
 	    var JQ = $( "#" + plotId );
 	    var series = textToSeries( datalog, JQ[0].options ); 
             // series will set yaxis min/max in options
-	    for( var i=0; i < series.length; i++ ){
-	        series[i] =  { color: sColors[ plotId ][ i ], 
+	    for( var i=0; i < standardLables[ plotId ].length; i++ ){
+	        series[3*i] =  { color: sColors[ plotId ][ i ], 
 		        label: standardLables[ plotId ][i]+" = 100000",  
-                data: series[i], lines: { show: true }};
+                data: series[3*i], lines: { show: true }};
+	        series[3*i+1] =  { color: sColors[ plotId ][ i ], 
+		        //label: standardLables[ plotId ][i]+"Mi = 100000",  
+                fillBetween: standardLables[ plotId ][i] + "max",
+                data: series[3*i+1], lines: { show: true, lineWidth: 0,fill: 0.6 }};
+	        series[3*i+2] =  { color: sColors[ plotId ][ i ], 
+		        //label: standardLables[ plotId ][i]+"Ma = 100000",  
+                id: standardLables[ plotId ][i] + "max",
+                data: series[3*i+2], lines: { show: true, lineWidth: 0, fill: false }};
 	    }
 	    var flotObj = $.plot( JQ, series, JQ[0].options );
 	    JQ[0].flot = flotObj; // since I can't find how to call it
@@ -216,9 +220,11 @@ var standardLables = {
     function makeLegendButtons( id, pa, len ){ //for toggle
         var boxes = $("#"+id+" .legendColorBox");
         for( var i=0; i < len; i++ ){
-            $(boxes[i]).click( toggleSeries );
-            boxes[i].ind = i;
-            boxes[i].pa = pa;
+            if( boxes[i] ){
+                $(boxes[i]).click( toggleSeries );
+                boxes[i].ind = i;
+                boxes[i].pa = pa;
+            }
         }
     }
     function fixLegendWidth( id ){
